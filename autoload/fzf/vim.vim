@@ -31,16 +31,33 @@ set cpo&vim
 let s:min_version = '0.23.0'
 let s:is_win = has('win32') || has('win64')
 let s:is_wsl_bash = s:is_win && (exepath('bash') =~? 'Windows[/\\]system32[/\\]bash.exe$')
+" let s:is_wsl_bash = 0
 let s:layout_keys = ['window', 'up', 'down', 'left', 'right']
 let s:bin_dir = expand('<sfile>:p:h:h:h').'/bin/'
-let s:bin = {
-\ 'preview': s:bin_dir.'preview.sh',
-\ 'tags':    s:bin_dir.'tags.pl' }
+" TODO Check system before setting s:use_win_cmd. Also allow user config with g:use_win_cmd or similar
+let s:use_win_cmd = 1
+if s:use_win_cmd
+    let s:bin = {
+    \ 'preview': s:bin_dir.'preview.bat',
+    \ 'tags':    s:bin_dir.'tags.pl' }
+else
+    let s:bin = {
+    \ 'preview': s:bin_dir.'preview.sh',
+    \ 'tags':    s:bin_dir.'tags.pl' }
+endif
+
 let s:TYPE = {'dict': type({}), 'funcref': type(function('call')), 'string': type(''), 'list': type([])}
 if s:is_win
   if has('nvim')
     let s:bin.preview = split(system('for %A in ("'.s:bin.preview.'") do @echo %~sA'), "\n")[0]
+    if !s:use_win_cmd 
+        if s:is_wsl_bash
+            let s:bin.preview = substitute(s:bin.preview, '^\([A-Z]\):', '/mnt/\L\1', '')
+            let s:bin.preview = substitute(s:bin.preview, '\', '/', 'g')
+        endif
+    endif
   else
+    " TODO if !s:use_win_cmd
     let preview_path = s:is_wsl_bash
       \ ? substitute(s:bin.preview, '^\([A-Z]\):', '/mnt/\L\1', '')
       \ : fnamemodify(s:bin.preview, ':8')
@@ -149,9 +166,13 @@ function! fzf#vim#with_preview(...)
     if s:is_wsl_bash && $WSLENV !~# '[:]\?MSWINHOME\(\/[^:]*\)\?\(:\|$\)'
       let $WSLENV = 'MSWINHOME/u:'.$WSLENV
     endif
-    let preview_cmd = 'bash '.(s:is_wsl_bash
-    \ ? s:bin.preview
-    \ : escape(s:bin.preview, '\'))
+    if s:use_win_cmd 
+        let preview_cmd = s:bin.preview
+    else
+        let preview_cmd = 'bash '.(s:is_wsl_bash
+        \ ? s:bin.preview
+        \ : escape(s:bin.preview, '\'))
+    endif
   else
     let preview_cmd = fzf#shellescape(s:bin.preview)
   endif
