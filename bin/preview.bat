@@ -51,6 +51,6 @@ EXIT /B
 :ABSPATH
     SET RETVAL=%~f1
     :: Debugging
-    echo ABSPATH path result is: "%RETVAL%"
+    :: echo ABSPATH path result is: "%RETVAL%"
     EXIT /B
 
